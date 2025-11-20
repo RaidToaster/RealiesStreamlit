@@ -51,7 +51,7 @@ st.markdown(
 
 
 BASE_DIR = Path(__file__).resolve().parent
-MODEL_CANDIDATES = ["model.h5", "new_model.h5"]
+MODEL_CANDIDATES = ["model.h5", "CNN_RNN.h5"]
 
 
 def find_model_path() -> Path:
