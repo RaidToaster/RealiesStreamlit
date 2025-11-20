@@ -21,12 +21,13 @@ st.markdown(
     """
     <style>
     .hero {
-        background: radial-gradient(circle at 20% 20%, #e6f0ff 0, #f4f7fb 45%, #ffffff 75%);
+        background: radial-gradient(circle at 20% 20%, #d9e5ff 0, #d4dbeb 45%, #cfd6e4 75%);
         border: 1px solid #e6ecf5;
         padding: 1.5rem;
         border-radius: 18px;
         box-shadow: 0 12px 45px rgba(15, 23, 42, 0.07);
         margin-bottom: 1rem;
+        color: #0f172a;
     }
     .pill {
         display: inline-block;
