@@ -5,6 +5,8 @@ from typing import Dict, Optional, Tuple
 import cv2
 import numpy as np
 import streamlit as st
+from tensorflow.keras.applications import ResNet50
+from tensorflow.keras.applications.resnet import preprocess_input as resnet_preprocess
 from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing.image import img_to_array
 
@@ -52,7 +54,7 @@ st.markdown(
 
 
 BASE_DIR = Path(__file__).resolve().parent
-MODEL_CANDIDATES = ["model.h5", "CNN_RNN.h5"]
+MODEL_CANDIDATES = ["CNN_RNN.h5"]
 
 
 def find_model_path() -> Path:
@@ -92,6 +94,33 @@ def preprocess_frame(frame: np.ndarray, target_hw: Tuple[int, int]) -> np.ndarra
     resized = cv2.resize(frame_rgb, target_hw)
     array = img_to_array(resized).astype("float32") / 255.0
     return array
+
+
+@st.cache_resource
+def get_feature_extractor(feature_dim: int, target_hw: Tuple[int, int]):
+    """Return a cached feature extractor to match sequence-based models."""
+    if feature_dim == 2048:
+        # ResNet50 global-average-pooled outputs 2048-dim embeddings.
+        extractor = ResNet50(
+            weights="imagenet",
+            include_top=False,
+            pooling="avg",
+            input_shape=(target_hw[0], target_hw[1], 3),
+        )
+        return extractor, resnet_preprocess
+
+    raise ValueError(
+        f"Dukungan extractor belum tersedia untuk dimensi fitur {feature_dim}. "
+        "Gunakan model citra tunggal atau model sekuen dengan vektor 2048-dim."
+    )
+
+
+def downsample_frames(frames: np.ndarray, max_count: int) -> np.ndarray:
+    """Evenly pick up to max_count frames to preserve coverage."""
+    if len(frames) <= max_count:
+        return frames
+    idxs = np.linspace(0, len(frames) - 1, num=max_count, dtype=int)
+    return frames[idxs]
 
 
 def sample_frames(
