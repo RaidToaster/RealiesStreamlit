@@ -164,8 +164,51 @@ def predict_deepfake(
     target_hw: Tuple[int, int],
 ) -> Dict[str, float]:
     """Run model inference and return real/fake probabilities."""
-    preprocessed = np.array([preprocess_frame(f, target_hw) for f in frames], dtype=np.float32)
-    preds = model.predict(preprocessed, verbose=0)
+
+    input_shapes = model.input_shape
+    if not isinstance(input_shapes, list):
+        input_shapes = [input_shapes]
+
+    # Case 1: single image input (H, W, 3)
+    if len(input_shapes) == 1:
+        preprocessed = np.array([preprocess_frame(f, target_hw) for f in frames], dtype=np.float32)
+        preds = model.predict(preprocessed, verbose=0)
+        frames_used = len(frames)
+
+    # Case 2: sequence model expects embeddings + mask
+    elif len(input_shapes) == 2:
+        seq_shape, mask_shape = input_shapes
+        _, seq_len, feature_dim = seq_shape
+        seq_len = int(seq_len or 20)
+        feature_dim = int(feature_dim or 2048)
+
+        extractor, preprocess_fn = get_feature_extractor(feature_dim, target_hw)
+
+        sampled_frames = downsample_frames(frames, seq_len)
+        frames_used = len(sampled_frames)
+
+        prepped = []
+        for f in sampled_frames:
+            frame_rgb = cv2.cvtColor(f, cv2.COLOR_BGR2RGB)
+            resized = cv2.resize(frame_rgb, target_hw)
+            prepped.append(preprocess_fn(resized.astype("float32")))
+
+        prepped = np.asarray(prepped, dtype=np.float32)
+        features = extractor.predict(prepped, verbose=0)
+
+        feature_batch = np.zeros((1, seq_len, feature_dim), dtype=np.float32)
+        feature_batch[0, : len(features), :] = features
+
+        mask_batch = np.zeros((1, seq_len), dtype=bool)
+        mask_batch[0, : len(features)] = True
+
+        preds = model.predict([feature_batch, mask_batch], verbose=0)
+
+    else:
+        raise ValueError(
+            f"Model memiliki {len(input_shapes)} input yang tidak didukung aplikasi (hanya 1 atau 2)."
+        )
+
     preds = np.asarray(preds)
 
     # Handle binary sigmoid or 2-class softmax outputs.
@@ -180,7 +223,7 @@ def predict_deepfake(
     return {
         "fake_prob": fake_prob,
         "real_prob": real_prob,
-        "frames_used": len(frames),
+        "frames_used": frames_used,
     }
 
 
@@ -270,7 +313,11 @@ def detection_tab(model, model_path: Path) -> None:
                     return
 
                 target_hw = resolve_target_size(model)
-                metrics = predict_deepfake(model, frames, target_hw)
+                try:
+                    metrics = predict_deepfake(model, frames, target_hw)
+                except ValueError as exc:
+                    st.error(str(exc))
+                    return
 
             verdict = "FAKE" if metrics["fake_prob"] >= 0.5 else "REAL"
             confidence = metrics["fake_prob"] if verdict == "FAKE" else metrics["real_prob"]
