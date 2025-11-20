@@ -179,7 +179,7 @@ def predict_deepfake(
     elif len(input_shapes) == 2:
         seq_shape, mask_shape = input_shapes
         _, seq_len, feature_dim = seq_shape
-        seq_len = int(seq_len)
+        seq_len = int(seq_len or 20)
         feature_dim = int(feature_dim or 2048)
 
         extractor, preprocess_fn = get_feature_extractor(feature_dim, target_hw)
