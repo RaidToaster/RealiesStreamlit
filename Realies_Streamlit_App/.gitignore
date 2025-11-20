@@ -1,0 +1,12 @@
+# Environments
+venv/
+.venv/
+env/
+# Bytecode / cache
+__pycache__/
+*.pyc
+# OS metadata
+.DS_Store
+Thumbs.db
+# Streamlit artifacts
+.streamlit/
