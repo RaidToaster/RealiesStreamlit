@@ -5,7 +5,6 @@ from typing import Dict, Optional, Tuple
 import cv2
 import numpy as np
 import streamlit as st
-from tensorflow.keras.layers import GRU
 from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing.image import img_to_array
 
@@ -66,23 +65,10 @@ def find_model_path() -> Path:
     )
 
 
-class GRUIgnoreTimeMajor(GRU):
-    """Legacy GRU loader that drops unsupported time_major kwarg for newer Keras."""
-
-    def __init__(self, *args, **kwargs):
-        kwargs.pop("time_major", None)
-        super().__init__(*args, **kwargs)
-
-
 @st.cache_resource(show_spinner="Memuat model deteksi... ⏳")
 def get_model() -> Tuple[object, Path]:
     model_path = find_model_path()
-    model = load_model(
-        model_path,
-        # Handle legacy models that used GRU(time_major) which is not accepted in newer Keras.
-        custom_objects={"GRU": GRUIgnoreTimeMajor},
-        compile=False,
-    )
+    model = load_model(model_path)
     return model, model_path
 
 
